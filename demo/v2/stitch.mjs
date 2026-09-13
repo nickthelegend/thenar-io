@@ -13,7 +13,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 
 const OUT = "demo/v2/out";
-const P1 = `${OUT}/thenar-demo-part1.mp4`, P2 = `${OUT}/thenar-demo-part2.mp4`, FINAL = `${OUT}/thenar-demo-final.mp4`;
+const P1 = `${OUT}/thenar-demo-part1.mp4`, P2 = `${OUT}/thenar-demo-part2.mp4`;
 const LIMIT = 299, MAX_SPEED = 3;
 
 const argv = process.argv.slice(2);
@@ -24,8 +24,9 @@ for (let i = 0; i < argv.length; i++) {
   else positional.push(argv[i]);
 }
 const src = positional[0];
+const FINAL = flags.out ?? `${OUT}/thenar-demo-final.mp4`;
 if (!src || !existsSync(src)) {
-  console.error("usage: node demo/v2/stitch.mjs <selfie-recording> [--from m:ss] [--to m:ss]");
+  console.error("usage: node demo/v2/stitch.mjs <selfie-recording> [--from m:ss] [--to m:ss] [--out file.mp4]");
   process.exit(1);
 }
 for (const f of [P1, P2, `${OUT}/slot.json`]) if (!existsSync(f)) throw new Error(`MISSING_PART:${f} (run cut.mjs all first)`);
