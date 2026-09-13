@@ -831,7 +831,9 @@ export default function StationPage() {
                 {/* Asked before the run, not after it: a paid run needs a live
                     human behind the address, and finding that out once the arm
                     has already placed the payload wastes the operator's run. */}
-                {!practice && s.connected && !s.wrongNetwork ? (
+                {/* On any chain: the check is a message signature and a phone
+                    scan, and a wallet that cannot add Arc must still reach it. */}
+                {!practice && s.connected ? (
                   <div className="mt-6">
                     <HumanGate />
                   </div>
