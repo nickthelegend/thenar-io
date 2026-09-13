@@ -21,7 +21,7 @@ before this event and what was built during it are separated
 | **Sales log** | A Hedera Consensus Service topic only the seller can post to; every pull is logged with the sha256 of the file served |
 | **Agent identity** | World AgentKit; AgentBook on World Chain (480) decides who gets free pulls |
 | **Wallets** | Privy: operators sign in with an email and get an embedded wallet on Arc; a lab's budget is a Privy server wallet whose policy only lets it fund bounties |
-| **Repo** | https://github.com/nickthelegend/thenar-arc |
+| **Repo** | https://github.com/nickthelegend/thenar-io |
 | **Submission notes** | [SUBMISSION.md](SUBMISSION.md) · World feedback: [docs/FEEDBACK-WORLD.md](docs/FEEDBACK-WORLD.md) |
 
 Everything below is on testnets and every link is to a real transaction.
@@ -255,7 +255,7 @@ nonce and timestamps were declared dynamic.
 ## What existed before ETHOnline, and what is new
 
 **Boundary:** commit
-[`e4f131d`](https://github.com/nickthelegend/thenar-arc/commit/e4f131d) on
+[`e4f131d`](https://github.com/nickthelegend/thenar-io/commit/e4f131d) on
 2026-09-03 is the last commit before the event. `git log e4f131d..HEAD` is the
 work done during it; `git diff --stat e4f131d..HEAD` is its size.
 

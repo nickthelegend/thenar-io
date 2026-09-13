@@ -110,7 +110,7 @@ async function readPolicy(l: Lab): Promise<LabPolicy> {
     headers: {
       authorization: `Basic ${Buffer.from(`${l.appId}:${l.appSecret}`).toString("base64")}`,
       "privy-app-id": l.appId,
-      "user-agent": "thenar-arc/0.1 (+https://github.com/nickthelegend/thenar-arc)",
+      "user-agent": "thenar-io/0.1 (+https://github.com/nickthelegend/thenar-io)",
     },
     cache: "no-store",
   });

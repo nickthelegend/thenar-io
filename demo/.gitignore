@@ -11,3 +11,5 @@ v2/out/
 v2/scenes/*.webm
 v2/scenes/*.mp4
 v2/scenes/*.png
+v2/take-prev/
+v2/__pycache__/

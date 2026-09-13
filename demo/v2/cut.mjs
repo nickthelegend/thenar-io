@@ -7,7 +7,7 @@
  * Fails loudly (STALE_SOURCE, MISSING_MARK, NO_TAKE_TXS, NO_SLIDE_AUDIO, …)
  * rather than substituting anything.
  */
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { readFileSync, writeFileSync, mkdirSync, statSync, existsSync, rmSync, readdirSync } from "node:fs";
 import { chromium } from "playwright";
 
@@ -140,6 +140,23 @@ function worldHtml(gate) {
     </div>`, d];
 }
 
+// The card before the live Selfie Check. The recording itself is made by hand
+// on a real face and goes in straight after this, so it closes on black.
+function selfieHtml() {
+  const id = "e4-selfie", d = durations[id] + 0.9;
+  return [`<div style="position:absolute;inset:0;background:#0D0D0F;color:#EFEFEE">
+      <div class="label rise" style="position:absolute;left:160px;top:170px;color:#8A8A90">World ID · Selfie Check</div>
+      <div class="rise" style="position:absolute;left:160px;top:225px;font:800 130px/1 'Helvetica Neue',Arial;letter-spacing:-0.03em;animation-delay:.1s">Done for real</div>
+      <div class="rise" style="position:absolute;left:164px;top:420px;width:920px;font:500 42px/1.4 'Helvetica Neue',Arial;color:#C9C9CE;animation-delay:${at(id, 0.3)}">A face scanned in World App. The proof comes back to <span class="mono" style="color:#7C97FF">POST /api/verify</span>, and the wallet is cleared to record.</div>
+      <div class="pop" style="position:absolute;left:1290px;top:150px;width:400px;height:780px;border:6px solid #EFEFEE;border-radius:64px;animation-delay:.3s">
+        <div style="position:absolute;left:50%;top:44%;width:240px;height:240px;margin:-120px 0 0 -120px;border-radius:50%;border:6px solid #7C97FF;animation:scan 1.6s ease-in-out .9s infinite"></div>
+        <div class="mono" style="position:absolute;left:0;right:0;bottom:80px;text-align:center;font-size:24px;letter-spacing:.16em;color:#8A8A90">SCANNING</div>
+      </div>
+      <div style="position:absolute;inset:0;background:#0D0D0F;opacity:0;animation:toblack .6s ease-in ${(d - 0.6).toFixed(2)}s forwards"></div>
+      <style>@keyframes scan{0%,100%{transform:scale(.9);opacity:.45}50%{transform:scale(1.06);opacity:1}}@keyframes toblack{to{opacity:1}}</style>
+    </div>`, d];
+}
+
 function outroHtml() {
   const id = "outro", d = durations[id] + 1.4;
   const rows = [["People", "record the data"], ["Arc", "pays them in USDC"], ["Hedera", "sells and tokenizes it"], ["World", "keeps it one human per set of runs"]];
@@ -148,7 +165,7 @@ function outroHtml() {
         ${rows.map(([a, b], i) => `<div class="rise" style="animation-delay:${at(id, 0.04 + i * 0.16)};font:700 74px/1.25 'Helvetica Neue',Arial"><span style="color:#7C97FF">${a}</span> ${b}</div>`).join("")}
       </div>
       <div class="pop" style="position:absolute;left:160px;top:720px;font:800 110px/1 'Helvetica Neue',Arial;letter-spacing:-0.03em;animation-delay:${at(id, 0.72)}">Thanks for watching.</div>
-      <div class="rise mono" style="position:absolute;left:164px;top:880px;font-size:30px;color:#A8A8AE;animation-delay:${at(id, 0.8)}">github.com/nickthelegend/thenar-arc</div>
+      <div class="rise mono" style="position:absolute;left:164px;top:880px;font-size:30px;color:#A8A8AE;animation-delay:${at(id, 0.8)}">github.com/nickthelegend/thenar-io</div>
       <div style="position:absolute;inset:0;background:#0D0D0F;opacity:0;animation:fadeout .9s ease-in ${(d - 0.9).toFixed(2)}s forwards"></div>
       <style>@keyframes fadeout{to{opacity:1}}</style>
     </div>`, d];
@@ -274,6 +291,8 @@ const [e2, e2s] = receiptsHtml(txs);
 await renderScene("e2-receipts", e2, e2s);
 const [e3, e3s] = worldHtml(txs.worldGate);
 await renderScene("e3-world", e3, e3s);
+const [e4, e4s] = selfieHtml();
+await renderScene("e4-selfie", e4, e4s);
 if (!["intro", "e1-path", "outro"].every((id) => existsSync(`${SCENES}/${id}.mp4`))) await scenesStatic();
 
 const ORDER = narration.map((n) => n.id);
@@ -341,6 +360,29 @@ const BURNED = `${OUT}/thenar-demo.mp4`;
 ff(["-i", FINAL_CLEAN, "-f", "concat", "-safe", "0", "-i", `${WORK}/subs/list.txt`, "-filter_complex", "[1:v]format=rgba[s];[0:v][s]overlay=0:0:format=auto:eof_action=pass[v]", "-map", "[v]", "-map", "0:a", ...VENC, "-c:a", "copy", BURNED]);
 
 // ---------------------------------------------------------------------------
+// The Selfie Check slot. That recording is made by hand, on a real face, so
+// the video is also written as the two halves either side of where it goes;
+// stitch.mjs drops the recording in between.
+// ---------------------------------------------------------------------------
+const ffAsync = (args) => new Promise((resolve, reject) => {
+  const p = spawn("ffmpeg", ["-y", "-hide_banner", "-loglevel", "error", ...args], { stdio: ["ignore", "ignore", "pipe"] });
+  let err = "";
+  p.stderr.on("data", (d) => { err += d; });
+  p.on("close", (code) => (code === 0 ? resolve() : reject(new Error(`ffmpeg exited ${code}: ${err.slice(-400)}`))));
+});
+const slotRow = timeline.find((r) => r.id === "e4-selfie");
+if (!slotRow) throw new Error("NO_SELFIE_SLOT");
+const slotAt = (slotRow.start + slotRow.dur) / SPEED;
+const PART1 = `${OUT}/thenar-demo-part1.mp4`, PART2 = `${OUT}/thenar-demo-part2.mp4`;
+await Promise.all([
+  ffAsync(["-i", BURNED, "-t", slotAt.toFixed(3), ...VENC, ...AENC, "-movflags", "+faststart", PART1]),
+  ffAsync(["-ss", slotAt.toFixed(3), "-i", BURNED, ...VENC, ...AENC, "-movflags", "+faststart", PART2]),
+]);
+const afterSlot = [["b18-contracts", "Contracts and status"]].map(([id, name]) => ({ name, offset: timeline.find((r) => r.id === id).start / SPEED - slotAt }));
+writeFileSync(`${OUT}/slot.json`, JSON.stringify({ slotAt, part1: durOf(PART1), part2: durOf(PART2), afterSlot }, null, 2));
+console.log(`slot at ${slotAt.toFixed(2)}s · part1 ${durOf(PART1).toFixed(2)}s · part2 ${durOf(PART2).toFixed(2)}s`);
+
+// ---------------------------------------------------------------------------
 // PHASE I/J — checks and publish kit
 // ---------------------------------------------------------------------------
 const silence = run("ffmpeg", ["-hide_banner", "-i", BURNED, "-af", "silencedetect=noise=-40dB:d=2.5", "-f", "null", "-"]).toString();
@@ -356,7 +398,8 @@ kit.push("## Transactions in this recording",
   `- Hedera sales log: HCS topic ${txs.hederaX402.topic} message #${txs.hederaX402.sequence} — https://hashscan.io/testnet/topic/${txs.hederaX402.topic}`,
   `- Hedera ATS issuance (supply ${txs.hederaAts.supplyBefore} → ${txs.hederaAts.supplyAfter}): ${txs.hederaAts.explorer}`,
   `- World ID gate: ${txs.worldGate.status} "${txs.worldGate.message}" for wallet ${txs.worldGate.operator}`, "");
-kit.push("## Links", "- Repo: https://github.com/nickthelegend/thenar-arc", "- ATS security: https://hashscan.io/testnet/contract/0.0.10520394", "- AxonProtocolV2: https://testnet.arcscan.app/address/0x6D6D6D0ee86C654b69646223049D6812c0218B2f", "");
+kit.push("## Selfie Check slot", `The live Selfie Check recording goes in at ${mmss(slotAt)}, straight after the "Done for real" card. thenar-demo-part1.mp4 and thenar-demo-part2.mp4 are the halves either side; run: node demo/v2/stitch.mjs <recording> [--from m:ss] [--to m:ss] to get thenar-demo-final.mp4.`, "");
+kit.push("## Links", "- Repo: https://github.com/nickthelegend/thenar-io", "- ATS security: https://hashscan.io/testnet/contract/0.0.10520394", "- AxonProtocolV2: https://testnet.arcscan.app/address/0x6D6D6D0ee86C654b69646223049D6812c0218B2f", "");
 kit.push("## Silences over 2.5s", ...(silence.match(/silence_start: [\d.]+|silence_end: [\d.]+ \| silence_duration: [\d.]+/g) ?? ["none"]));
 writeFileSync(`${OUT}/publish-kit.md`, kit.join("\n"));
 writeFileSync(`${OUT}/timeline.json`, JSON.stringify({ speed: SPEED, offset, timeline, cues: cues.length }, null, 2));

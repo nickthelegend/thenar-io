@@ -57,7 +57,7 @@ async function privy(path, body) {
       authorization: `Basic ${Buffer.from(`${APP}:${SECRET}`).toString("base64")}`,
       "privy-app-id": APP,
       "content-type": "application/json",
-      "user-agent": "thenar-arc/0.1 (+https://github.com/nickthelegend/thenar-arc)",
+      "user-agent": "thenar-io/0.1 (+https://github.com/nickthelegend/thenar-io)",
     },
     body: body ? JSON.stringify(body) : undefined,
   });
