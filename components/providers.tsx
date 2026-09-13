@@ -3,8 +3,9 @@
 import { Suspense, useEffect, useState } from "react";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { PrivyProvider } from "@privy-io/react-auth";
-import { WagmiProvider } from "@privy-io/wagmi";
+import { PrivyProvider, useWallets } from "@privy-io/react-auth";
+import { WagmiProvider, useSetActiveWallet } from "@privy-io/wagmi";
+import { useAccount } from "wagmi";
 import { TasksProvider } from "@/components/tasks-provider";
 import { ModelStageProvider } from "@/components/model-stage";
 import { Palette } from "@/components/palette";
@@ -42,6 +43,28 @@ function useDarkGround() {
     return () => mo.disconnect();
   }, []);
   return dark;
+}
+
+/**
+ * An operator who signed in with email works through the wallet Privy made.
+ *
+ * An extension installed alongside is detected too, and could be the wallet
+ * wagmi is handed instead — and some (CELL) sign transactions but refuse to sign
+ * a plain message, which is exactly what the World ID check asks for. When an
+ * embedded wallet exists, it is the active one.
+ */
+function PreferEmbeddedWallet() {
+  const { wallets, ready } = useWallets();
+  const { setActiveWallet } = useSetActiveWallet();
+  const { address } = useAccount();
+  useEffect(() => {
+    if (!ready) return;
+    const embedded = wallets.find((w) => w.walletClientType === "privy");
+    if (embedded && embedded.address.toLowerCase() !== address?.toLowerCase()) {
+      setActiveWallet(embedded).catch((e) => console.error("Could not make the Privy wallet the active one", e));
+    }
+  }, [ready, wallets, address, setActiveWallet]);
+  return null;
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -83,6 +106,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     >
       <QueryClientProvider client={queryClient}>
         <WagmiProvider config={wagmiConfig}>
+          <PreferEmbeddedWallet />
           <TasksProvider>
           <ModelStageProvider>
             {children}
